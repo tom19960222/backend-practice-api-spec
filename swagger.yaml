@@ -1,0 +1,282 @@
+openapi: 3.0.0
+info:
+  description: >
+    基本要求:
+      * Web 框架使用 Express
+      * 資料庫使用 MySQL / MariaDB
+      
+    資料庫要求:
+      * 文章和分類要分兩張表存
+      * 能夠自動產生流水號 (如: `post_id`, `file_id`)
+      * 建立時間欄位 (如 `post` 的 `created_on`) 使用 unix timestamp (`Math.floor(new Date().valueOf() / 1000)`)
+      
+    檔案上傳使用的編碼格式請參考 `npm` 上的 `dauria` 套件
+      
+    其他自行發揮~
+    
+    
+  title: 部落格後端練習
+  version: '0.1'
+paths:
+  /api/post:
+    get:
+      summary: 取得文章列表 (管理用)
+      description: >
+        取得文章列表
+      tags:
+        - Post
+      responses:
+        200:
+          $ref: '#/components/responses/PostList'
+    post:
+      responses:
+        200:
+          $ref: '#/components/responses/SinglePost'
+        400:
+           $ref: '#/components/responses/DataFormatInvalidError'
+      tags:
+      - Post
+      description: >
+        新增一篇文章
+      requestBody:
+        $ref: '#/components/requestBodies/SinglePost'
+      summary: 新增一篇文章
+  /api/post/{post_id}:
+    parameters:
+    - in: path
+      name: post_id
+      required: true
+      description: 文章ID
+      schema:
+        type: integer
+    get:
+      summary: 取得單篇文章 (管理用)
+      description: >
+        取得單篇文章
+      tags:
+        - Post
+      responses:
+        200:
+          $ref: '#/components/responses/SinglePost'
+        404:
+          $ref: '#/components/responses/NotFoundError'
+    patch:
+      summary: 修改單篇文章
+      description: >
+        修改單篇文章
+      tags:
+        - Post
+      responses:
+        200:
+          $ref: '#/components/responses/SinglePost'
+        400:
+          $ref: '#/components/responses/DataFormatInvalidError'
+        404:
+          $ref: '#/components/responses/NotFoundError'
+    delete:
+      summary: 刪除單篇文章
+      description: >
+        刪除單篇文章
+      tags:
+        - Post
+      responses:
+        204:
+          description: 刪除成功
+  /api/page/post:
+    get:
+      summary: 取得文章列表 (頁面用)
+      description: >
+        取得文章列表 (頁面用)
+      tags:
+        - Post
+      responses:
+        200:
+          $ref: '#/components/responses/PostListForPage'
+  /api/page/post/{post_id}:
+    parameters:
+    - in: path
+      name: post_id
+      required: true
+      description: 文章ID
+      schema:
+        type: integer
+    get:
+      summary: 取得單篇文章 (頁面用)
+      description: >
+        取得單篇文章 (頁面用)
+      tags:
+        - Post
+      responses:
+        200:
+          $ref: '#/components/responses/SinglePostForPage'
+        404:
+          $ref: '#/components/responses/NotFoundError'
+  /api/post/categories:
+    get:
+      summary: 取得文章分類列表 (新增時使用)
+      description: >
+        取得文章分類列表 (新增時使用)
+      tags:
+        - Post
+      responses:
+        200:
+          description: 文章分類清單
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  categories:
+                    type: array
+                    items:
+                      type: string
+  
+
+components:
+  requestBodies:
+    SinglePost:
+      description: 單篇文章
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Post'
+              
+  responses:
+    DataFormatInvalidError:
+      description: 資料格式錯誤
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Error'
+              - type: object
+                properties:
+                  name:
+                    type: string
+                    enum: ['DataFormatInvalidError']
+                  code:
+                    type: integer
+                    enum: [400]
+    NotFoundError:
+      description: 找不到指定的資源
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Error'
+              - type: object
+                properties:
+                  name:
+                    type: string
+                    enum: ['NotFoundError']
+                  code:
+                    type: integer
+                    enum: [404]
+    SinglePost:
+      description: 單篇文章 (管理用)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Post'
+    PostList:
+      description: 文章列表 (管理用)
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              posts:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Post'
+    SinglePostForPage:
+      description: 單篇文章 (頁面用)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PostForPage'
+    PostListForPage:
+      description: 文章列表 (頁面用)
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              posts:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PostForPage'
+        
+  schemas:
+    Error:
+      type: object
+      properties:
+        code:
+          format: int32
+          type: integer
+        message:
+          type: string
+          description: 自行填入給寫前端的人看的錯誤訊息
+        name:
+          type: string
+      required:
+        - name
+        - message
+        - code
+    File:
+      type: object
+      properties:
+        file_id:
+          type: integer
+          readOnly: true
+          description: 檔案ID (自動產生)
+        uri:
+          type: string
+          writeOnly: true
+          description: Base64 Data URI 編碼過的檔案
+        path:
+          type: string
+          readOnly: true
+          description: >
+            檔案路徑 (絕對路徑) 
+            ex: `/uploads/test.jpg`
+    Post:
+      type: object
+      properties:
+        post_id:
+          type: integer
+          readOnly: true
+          description: 文章ID (自動產生)
+        created_on:
+          type: integer
+          readOnly: true
+          description: 建立時間 (自動產生)
+        title:
+          type: string
+        content:
+          type: string
+        categories:
+          type: array
+          items:
+            type: string
+        cover_image:
+          $ref: '#/components/schemas/File'
+    PostForPage:
+      type: object
+      properties:
+        post_id:
+          type: integer
+          readOnly: true
+        created_on:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+        content:
+          type: string
+        categories:
+          type: array
+          items:
+            type: string
+        cover_image:
+          type: string
