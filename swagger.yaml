@@ -10,7 +10,11 @@ info:
       * 能夠自動產生流水號 (如: `post_id`, `file_id`)
       * 建立時間欄位 (如 `post` 的 `created_on`) 使用 unix timestamp (`Math.floor(new Date().valueOf() / 1000)`)
       
-    檔案上傳使用的編碼格式請參考 `npm` 上的 `dauria` 套件
+    檔案上傳功能:
+      * `uri` 欄位使用的編碼格式請參考 `npm` 上的 `dauria` 套件
+      * `uri` 和 `file_id` 使用的邏輯:
+        1. 如果 `uri` 不是空字串，則使用 `uri` 的內容新增一個檔案，並使用該檔案
+        2. 如果 `uri` 是空字串，但 `file_id` 大於 0，則使用該 `file_id` 的檔案
       
     其他自行發揮~
     
@@ -63,9 +67,11 @@ paths:
     patch:
       summary: 修改單篇文章
       description: >
-        修改單篇文章
+        Body 裡有給的欄位才要修改，其他維持原樣
       tags:
         - Post
+      requestBody:
+        $ref: '#/components/requestBodies/SinglePost'
       responses:
         200:
           $ref: '#/components/responses/SinglePost'
@@ -228,7 +234,6 @@ components:
       properties:
         file_id:
           type: integer
-          readOnly: true
           description: 檔案ID (自動產生)
         uri:
           type: string
